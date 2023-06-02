@@ -74,6 +74,26 @@ contract MoonstreamV1 is ICar {
         return bananaCost < efficiencyCost;
     }
 
+    // function getSuperEffectiveness(
+    //     Monaco.CarData memory leadCar,
+    //     Monaco.CarData memory ourCar,
+    //     uint256 ourCarIndex
+    // ) internal pure returns (uint256 effectiveness) {
+    //     effectiveness = 1;
+    //     if (ourCarIndex != 0) {
+    //         // lead metrics -- data about the car in front
+    //         uint256 leadSpeedDelta = leadCar.speed - ourCar.speed;
+    //         uint256 leadDistance = leadCar.y - ourCar.y;
+    //         if (leadCar.shield == 0 && leadDistance > 0) {
+    //             if (leadSpeedDelta > 0) {
+    //                 effectiveness = 3;
+    //             } else {
+    //                 effectiveness = 2;
+    //             }
+    //         }
+    //     }
+    // }
+
     function takeYourTurn(
         Monaco monaco,
         Monaco.CarData[] calldata allCars,
