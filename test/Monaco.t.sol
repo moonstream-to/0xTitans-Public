@@ -8,6 +8,8 @@ import "../src/cars/ExampleCar.sol";
 
 import "../src/cars/samples/ThePackage.sol";
 
+import {ICar} from "../src/interfaces/ICar.sol";
+
 import {c000r} from "../src/cars/samples/c000r.sol";
 import {PermaShield} from "../src/cars/samples/PermaShield.sol";
 import {Sauce} from "../src/cars/samples/Saucepoint.sol";
@@ -421,6 +423,13 @@ contract MonacoTest is Test {
                 vm.toString(cars[1]),
                 '","',
                 vm.toString(cars[2]),
+                '"], ',
+                '"names":["',
+                ICar(cars[0]).sayMyName(),
+                '","',
+                ICar(cars[1]).sayMyName(),
+                '","',
+                ICar(cars[2]).sayMyName(),
                 '"]'
             );
     }
