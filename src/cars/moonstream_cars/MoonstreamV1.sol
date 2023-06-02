@@ -1,9 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
-import "./../../interfaces/ICar.sol";
+import "../../interfaces/ICar.sol";
+import "../../utils/SignedWadMath.sol";
+import {TurnOptimizer2} from "../../cars/Season I finalists/TurnOptimizer2.sol";
 
 contract MoonstreamV1 is ICar {
+    uint256 constant RACE_LENGTH = 1000;
+
     function hasEnoughBalance(
         Monaco.CarData memory ourCar,
         uint256 cost
@@ -70,29 +74,61 @@ contract MoonstreamV1 is ICar {
         uint256 bananaCost,
         uint256 bananaEffectiveness
     ) internal pure returns (bool) {
-        uint256 efficiencyCost = bananaEffectiveness * 100;
+        uint256 efficiencyCost = bananaEffectiveness * 75;
         return bananaCost < efficiencyCost;
     }
 
-    // function getSuperEffectiveness(
-    //     Monaco.CarData memory leadCar,
-    //     Monaco.CarData memory ourCar,
-    //     uint256 ourCarIndex
-    // ) internal pure returns (uint256 effectiveness) {
-    //     effectiveness = 1;
-    //     if (ourCarIndex != 0) {
-    //         // lead metrics -- data about the car in front
-    //         uint256 leadSpeedDelta = leadCar.speed - ourCar.speed;
-    //         uint256 leadDistance = leadCar.y - ourCar.y;
-    //         if (leadCar.shield == 0 && leadDistance > 0) {
-    //             if (leadSpeedDelta > 0) {
-    //                 effectiveness = 3;
-    //             } else {
-    //                 effectiveness = 2;
-    //             }
-    //         }
-    //     }
-    // }
+    function getSuperEffectiveness(
+        Monaco.CarData memory leadCar,
+        Monaco.CarData memory ourCar,
+        uint256 ourCarIndex,
+        uint256[] memory bananas
+    ) internal pure returns (uint256 effectiveness) {
+        effectiveness = 1;
+        if (ourCarIndex != 0) {
+            // lead metrics -- data about the car in front
+            uint256 leadSpeedDelta = leadCar.speed - ourCar.speed;
+            uint256 leadDistance = leadCar.y - ourCar.y;
+            if (leadDistance > 0) {
+                if (leadSpeedDelta > 10) {
+                    effectiveness += 3;
+                } else if (leadSpeedDelta > 0) {
+                    effectiveness += 2;
+                } else {
+                    effectiveness++;
+                }
+            }
+
+            if (leadDistance > 0) {
+                uint256 len = bananas.length;
+                for (uint i = 0; i < len; ++i) {
+                    // skip bananas that are behind or on us
+                    if (bananas[i] <= ourCar.y) continue;
+
+                    // Check if the closest car is closer than the closest banana
+                    // If a banana is on top of the closest car, the banana is hit
+                    if (bananas[i] <= leadCar.y) {
+                        effectiveness++;
+                    }
+                }
+            }
+        }
+    }
+
+    function isSuperEfficient(
+        uint256 superCost,
+        uint256 superEffectiveness
+    ) internal pure returns (bool) {
+        uint256 efficiencyCost = superEffectiveness * 100;
+        return superCost < efficiencyCost;
+    }
+
+    function projectRaceLength(
+        uint256 turns,
+        Monaco.CarData memory leadCar
+    ) internal pure returns (uint256) {
+        return (turns * RACE_LENGTH) / leadCar.y;
+    }
 
     function takeYourTurn(
         Monaco monaco,
@@ -113,18 +149,29 @@ contract MoonstreamV1 is ICar {
             leadCar = allCars[1];
         }
 
-        if (
+        while (
             monaco.getAccelerateCost(1) < 20 &&
             hasEnoughBalance(ourCar, monaco.getAccelerateCost(1))
         ) {
+            updateBalance(ourCar, monaco.getAccelerateCost(1));
             monaco.buyAcceleration(1);
         }
 
+        uint256 superEffectiveness = getSuperEffectiveness(
+            leadCar,
+            ourCar,
+            ourCarIndex,
+            bananas
+        );
+        uint256 superCost = monaco.getSuperShellCost(1);
+        bool usedSuper = false;
         if (
-            monaco.getAccelerateCost(1) < 20 &&
-            hasEnoughBalance(ourCar, monaco.getAccelerateCost(1))
+            isSuperEfficient(superCost, superEffectiveness) &&
+            hasEnoughBalance(ourCar, superCost)
         ) {
-            monaco.buyAcceleration(1);
+            updateBalance(ourCar, superCost);
+            monaco.buySuperShell(1);
+            usedSuper = true;
         }
 
         uint256 bananaEffectiveness = getBananaEffectiveness(
@@ -137,25 +184,21 @@ contract MoonstreamV1 is ICar {
             isBananaEfficient(bananaCost, bananaEffectiveness) &&
             hasEnoughBalance(ourCar, bananaCost)
         ) {
+            updateBalance(ourCar, bananaCost);
             monaco.buyBanana();
         }
 
-        uint256 shellEffectiveness = getShellEffectiveness(
-            leadCar,
-            ourCar,
-            ourCarIndex
-        );
+        uint256 shellEffectiveness = usedSuper
+            ? 1
+            : getShellEffectiveness(leadCar, ourCar, ourCarIndex);
         uint256 shellCost = monaco.getShellCost(1);
         if (
             isShellEfficient(shellCost, shellEffectiveness) &&
             hasEnoughBalance(ourCar, shellCost)
         ) {
+            updateBalance(ourCar, shellCost);
             monaco.buyShell(1);
         }
-
-        // while (monaco.getShellCost(1) < 75) {
-        //     monaco.buyShell(1);
-        // }
     }
 
     function sayMyName() external pure returns (string memory) {
