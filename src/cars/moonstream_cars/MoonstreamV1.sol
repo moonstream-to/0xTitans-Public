@@ -3,7 +3,6 @@ pragma solidity 0.8.17;
 
 import "../../interfaces/ICar.sol";
 import "../../utils/SignedWadMath.sol";
-import {TurnOptimizer2} from "../../cars/Season I finalists/TurnOptimizer2.sol";
 
 contract MoonstreamV1 is ICar {
     uint256 constant RACE_LENGTH = 1000;
@@ -119,15 +118,8 @@ contract MoonstreamV1 is ICar {
         uint256 superCost,
         uint256 superEffectiveness
     ) internal pure returns (bool) {
-        uint256 efficiencyCost = superEffectiveness * 100;
+        uint256 efficiencyCost = superEffectiveness * 150;
         return superCost < efficiencyCost;
-    }
-
-    function projectRaceLength(
-        uint256 turns,
-        Monaco.CarData memory leadCar
-    ) internal pure returns (uint256) {
-        return (turns * RACE_LENGTH) / leadCar.y;
     }
 
     function takeYourTurn(
@@ -150,7 +142,7 @@ contract MoonstreamV1 is ICar {
         }
 
         while (
-            monaco.getAccelerateCost(1) < 20 &&
+            monaco.getAccelerateCost(1) < 30 &&
             hasEnoughBalance(ourCar, monaco.getAccelerateCost(1))
         ) {
             updateBalance(ourCar, monaco.getAccelerateCost(1));
