@@ -195,6 +195,7 @@ contract MoonstreamV2 is ICar {
         uint256 balance,
         uint256 maxY
     ) internal pure returns (int256 scalerWad) {
+        uint256 scaleFactor = 1;
         // Not sure how to scale costs.
         if (maxY > 600) {
             scaleFactor = 2;
@@ -205,6 +206,7 @@ contract MoonstreamV2 is ICar {
         if (maxY > 900) {
             scaleFactor = 6;
         }
+        scalerWad = toWadUnsafe(scaleFactor);
     }
 
     function scaleTargetCost(
