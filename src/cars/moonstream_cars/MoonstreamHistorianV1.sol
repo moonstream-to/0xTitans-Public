@@ -6,7 +6,7 @@ import "../../utils/SignedWadMath.sol";
 
 import {MoonstreamV2} from "./MoonstreamV2.sol";
 
-contract MoonstreamV3 is MoonstreamV2 {
+contract MoonstreamHistorianV1 is MoonstreamV2 {
     enum CarProfile {
         Speeder,
         Spender,
@@ -145,5 +145,102 @@ contract MoonstreamV3 is MoonstreamV2 {
 
     function sayMyName() external pure override returns (string memory) {
         return "Moonstream v0.3.0";
+    }
+
+    function takeYourTurn(
+        Monaco monaco,
+        Monaco.CarData[] calldata allCars,
+        uint256[] calldata bananas,
+        uint256 ourCarIndex
+    ) external override {
+        currentTurn++;
+        for (uint i = 0; i < allCars.length; i++) {
+            updateProfile(allCars[i]);
+        }
+
+        Cars memory cars = Cars({
+            allCars: allCars,
+            ourCar: allCars[ourCarIndex],
+            ourCarIndex: ourCarIndex,
+            leadCar: allCars[0],
+            lagCar: allCars[2]
+        });
+
+        if (ourCarIndex == 0) {
+            cars.lagCar = allCars[1];
+        } else if (ourCarIndex == 1) {
+            cars.leadCar = allCars[0];
+            cars.lagCar = allCars[2];
+        } else {
+            cars.leadCar = allCars[1];
+        }
+
+        Costs memory baseCosts = Costs({
+            accelCost: monaco.getAccelerateCost(1),
+            shellCost: monaco.getShellCost(1),
+            superCost: monaco.getSuperShellCost(1),
+            bananaCost: monaco.getBananaCost(),
+            shieldCost: monaco.getShellCost(1)
+        });
+
+        (
+            uint256 turnsToLose,
+            uint256 bestOpponentIdx
+        ) = getTurnsToLoseOptimistic(monaco, allCars, ourCarIndex);
+        int256 spendingScalerWad = getSpendingScalerWad(
+            monaco.turns(),
+            turnsToLose,
+            cars.ourCar.balance,
+            getMaxY(allCars)
+        );
+
+        bool usedSuper = false;
+        if (
+            isSuperEfficient(
+                baseCosts.superCost,
+                getSuperEffectiveness(cars, bananas),
+                spendingScalerWad
+            ) && hasEnoughBalance(cars.ourCar, baseCosts.superCost)
+        ) {
+            updateBalance(cars.ourCar, baseCosts.superCost);
+            monaco.buySuperShell(1);
+            usedSuper = true;
+        }
+
+        if (
+            isBananaEfficient(
+                baseCosts.bananaCost,
+                getBananaEffectiveness(cars),
+                spendingScalerWad
+            ) && hasEnoughBalance(cars.ourCar, baseCosts.bananaCost)
+        ) {
+            updateBalance(cars.ourCar, baseCosts.bananaCost);
+            monaco.buyBanana();
+        }
+
+        if (
+            isShellEfficient(
+                baseCosts.shellCost,
+                usedSuper ? 1 : getShellEffectiveness(cars, bananas),
+                spendingScalerWad
+            ) && hasEnoughBalance(cars.ourCar, baseCosts.shellCost)
+        ) {
+            updateBalance(cars.ourCar, baseCosts.shellCost);
+            monaco.buyShell(1);
+        }
+
+        uint256 targetAccelPrice = getTargetAccelPrice(
+            monaco.getShellCost(1),
+            monaco.getSuperShellCost(1),
+            spendingScalerWad
+        );
+        while (
+            monaco.getAccelerateCost(1) < targetAccelPrice &&
+            hasEnoughBalance(cars.ourCar, monaco.getAccelerateCost(1))
+        ) {
+            updateBalance(cars.ourCar, monaco.getAccelerateCost(1));
+            monaco.buyAcceleration(1);
+        }
+
     }
 }

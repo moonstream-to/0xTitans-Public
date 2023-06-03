@@ -247,7 +247,7 @@ contract MoonstreamV2 is ICar {
         Monaco.CarData[] calldata allCars,
         uint256[] calldata bananas,
         uint256 ourCarIndex
-    ) external {
+    ) external virtual {
         Cars memory cars = Cars({
             allCars: allCars,
             ourCar: allCars[ourCarIndex],
