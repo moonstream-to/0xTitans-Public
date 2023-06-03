@@ -38,7 +38,7 @@ contract MoonstreamV2 is ICar {
     function getShellEffectiveness(
         Cars memory cars,
         uint256[] memory bananas
-    ) internal pure returns (uint256 effectiveness) {
+    ) internal view virtual returns (uint256 effectiveness) {
         effectiveness = 1;
         if (cars.ourCarIndex != 0) {
             bool bananaInTheWay = false;
@@ -75,14 +75,14 @@ contract MoonstreamV2 is ICar {
         uint256 shellCost,
         uint256 shellEffectiveness,
         int256 scalerWad
-    ) internal pure returns (bool) {
+    ) internal view virtual returns (bool) {
         uint256 efficiencyCost = shellEffectiveness * 50;
         return shellCost < scaleTargetCost(efficiencyCost, scalerWad);
     }
 
     function getBananaEffectiveness(
         Cars memory cars
-    ) internal pure returns (uint256 effectiveness) {
+    ) internal view virtual returns (uint256 effectiveness) {
         effectiveness = 1;
 
         if (cars.ourCarIndex == 0) {
@@ -103,7 +103,7 @@ contract MoonstreamV2 is ICar {
         uint256 bananaCost,
         uint256 bananaEffectiveness,
         int256 scalerWad
-    ) internal pure returns (bool) {
+    ) internal view virtual returns (bool) {
         uint256 efficiencyCost = bananaEffectiveness * 20;
         return bananaCost < scaleTargetCost(efficiencyCost, scalerWad);
     }
@@ -111,7 +111,7 @@ contract MoonstreamV2 is ICar {
     function getSuperEffectiveness(
         Cars memory cars,
         uint256[] memory bananas
-    ) internal pure returns (uint256 effectiveness) {
+    ) internal view virtual returns (uint256 effectiveness) {
         effectiveness = 1;
         if (cars.ourCarIndex != 0 && cars.allCars[0].y > cars.ourCar.y) {
             effectiveness++;
@@ -141,7 +141,7 @@ contract MoonstreamV2 is ICar {
         uint256 superCost,
         uint256 superEffectiveness,
         int256 scalerWad
-    ) internal pure returns (bool) {
+    ) internal view returns (bool) {
         uint256 efficiencyCost = superEffectiveness * 40;
         return superCost < scaleTargetCost(efficiencyCost, scalerWad);
     }
@@ -150,7 +150,7 @@ contract MoonstreamV2 is ICar {
         Monaco monaco,
         Monaco.CarData[] calldata allCars,
         uint256 ourCarIndex
-    ) internal returns (uint256 turnsToLose, uint256 bestOpponentIdx) {
+    ) internal virtual returns (uint256 turnsToLose, uint256 bestOpponentIdx) {
         turnsToLose = 1000;
         for (uint256 i = 0; i < allCars.length; i++) {
             if (i != ourCarIndex) {
@@ -333,7 +333,7 @@ contract MoonstreamV2 is ICar {
         }
     }
 
-    function sayMyName() external pure returns (string memory) {
+    function sayMyName() external virtual pure returns (string memory) {
         return "Moonstream v0.2.0";
     }
 }
