@@ -51,8 +51,8 @@ contract MonacoTest is Test {
     }
 
     function testGames() public {
-        ICar w1 = new TurnOptimizer2();
-        ICar w2 = new MoonstreamV2();
+        ICar w1 = new MoonstreamV2();
+        ICar w2 = new TurnOptimizer2();
         ICar w3 = new PolygonCarV31();
 
         monaco.register(w1);

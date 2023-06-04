@@ -76,7 +76,7 @@ contract MoonstreamV2 is ICar {
         uint256 shellEffectiveness,
         int256 scalerWad
     ) internal view virtual returns (bool) {
-        uint256 efficiencyCost = shellEffectiveness * 50;
+        uint256 efficiencyCost = shellEffectiveness * 32;
         return shellCost < scaleTargetCost(efficiencyCost, scalerWad);
     }
 
@@ -146,6 +146,24 @@ contract MoonstreamV2 is ICar {
         return superCost < scaleTargetCost(efficiencyCost, scalerWad);
     }
 
+    function getShieldEffectiveness(
+        Cars memory cars
+    ) internal view virtual returns (uint256 effectiveness) {
+        effectiveness = 1;
+        if (cars.ourCarIndex != 2) {
+            effectiveness += cars.ourCar.speed / 2;
+        }
+    }
+
+    function isShieldEfficient(
+        uint256 shieldCost,
+        uint256 shieldEffectiveness,
+        int256 scalarWad
+    ) internal view returns (bool) {
+        uint256 efficiencyCost = shieldEffectiveness * 10;
+        return shieldCost < scaleTargetCost(efficiencyCost, scalarWad);
+    }
+
     function getTurnsToLoseOptimistic(
         Monaco monaco,
         Monaco.CarData[] calldata allCars,
@@ -206,6 +224,9 @@ contract MoonstreamV2 is ICar {
         if (maxY > 900) {
             scaleFactor = 6;
         }
+        if (maxY > 950) {
+            scaleFactor = 8;
+        }
         scalerWad = toWadUnsafe(scaleFactor);
     }
 
@@ -242,6 +263,93 @@ contract MoonstreamV2 is ICar {
         return scaleTargetCost(targetAccelPrice, scalerWad);
     }
 
+    // function checkForWin(
+    //     Monaco monaco,
+    //     Monaco.CarData memory ourCar,
+    //     uint256[] memory bananas
+    // ) internal returns (bool) {
+    //     uint256 speedToWin = 1000 - ourCar.y;
+    //     if (speedToWin <= ourCar.speed) return true;
+    //     uint256 accelToWin = speedToWin - ourCar.speed;
+    //     if (monaco.getAccelerateCost(accelToWin) < ourCar.balance) {
+    //         monaco.buyAcceleration(accelToWin);
+    //         return true;
+    //     }
+    //     return false;
+    // }
+
+    function accelerate(
+        Monaco monaco,
+        Monaco.CarData memory ourCar,
+        uint256 amount
+    ) internal returns (bool success) {
+        if (ourCar.balance > monaco.getAccelerateCost(amount)) {
+            ourCar.balance -= uint32(monaco.buyAcceleration(amount));
+            return true;
+        }
+        return false;
+    }
+
+    function banana(
+        Monaco monaco,
+        Monaco.CarData memory ourCar
+    ) internal returns (bool success) {
+        if (ourCar.balance > monaco.getBananaCost()) {
+            ourCar.balance -= uint32(monaco.buyBanana());
+            return true;
+        }
+        return false;
+    }
+
+    function shell(
+        Monaco monaco,
+        Monaco.CarData memory ourCar,
+        uint256 amount
+    ) internal returns (bool success) {
+        if (ourCar.balance > monaco.getShellCost(amount)) {
+            ourCar.balance -= uint32(monaco.buyShell(amount));
+            return true;
+        }
+        return false;
+    }
+
+    function superShell(
+        Monaco monaco,
+        Monaco.CarData memory ourCar,
+        uint256 amount
+    ) internal returns (bool success) {
+        if (ourCar.balance > monaco.getSuperShellCost(amount)) {
+            ourCar.balance -= uint32(monaco.buySuperShell(amount));
+            return true;
+        }
+        return false;
+    }
+
+    function stopOpponent(
+        Monaco monaco,
+        Monaco.CarData[] calldata allCars,
+        Monaco.CarData memory ourCar,
+        uint256 ourCarIdx,
+        uint256 opponentIdx,
+        uint256 maxCost
+    ) internal {
+        // in front, so use shells
+        if (opponentIdx < ourCarIdx) {
+            // theyre already slow so no point shelling
+            if (allCars[opponentIdx].speed == 1) {
+                return;
+            }
+
+            if (!superShell(monaco, ourCar, 1)) {
+                // TODO: try to send enough shells to kill all bananas and the oppo
+                shell(monaco, ourCar, 1);
+            }
+        } else if (monaco.getBananaCost() < maxCost) {
+            // behind so banana
+            banana(monaco, ourCar);
+        }
+    }
+
     function takeYourTurn(
         Monaco monaco,
         Monaco.CarData[] calldata allCars,
@@ -265,14 +373,6 @@ contract MoonstreamV2 is ICar {
             cars.leadCar = allCars[1];
         }
 
-        Costs memory baseCosts = Costs({
-            accelCost: monaco.getAccelerateCost(1),
-            shellCost: monaco.getShellCost(1),
-            superCost: monaco.getSuperShellCost(1),
-            bananaCost: monaco.getBananaCost(),
-            shieldCost: monaco.getShellCost(1)
-        });
-
         (
             uint256 turnsToLose,
             uint256 bestOpponentIdx
@@ -283,6 +383,34 @@ contract MoonstreamV2 is ICar {
             cars.ourCar.balance,
             getMaxY(allCars)
         );
+
+        // if we can buy enough acceleration to win right away, do it
+        uint256 accelToWin = (1000 - cars.ourCar.y) - cars.ourCar.speed;
+        if (maxAccel(monaco, cars.ourCar.balance) >= accelToWin) {
+            accelerate(monaco, cars.ourCar, accelToWin);
+            stopOpponent(
+                monaco,
+                allCars,
+                cars.ourCar,
+                ourCarIndex,
+                bestOpponentIdx,
+                100000
+            );
+            accelerate(
+                monaco,
+                cars.ourCar,
+                maxAccel(monaco, cars.ourCar.balance)
+            );
+            return;
+        }
+
+        Costs memory baseCosts = Costs({
+            accelCost: monaco.getAccelerateCost(1),
+            shellCost: monaco.getShellCost(1),
+            superCost: monaco.getSuperShellCost(1),
+            bananaCost: monaco.getBananaCost(),
+            shieldCost: monaco.getShellCost(1)
+        });
 
         bool usedSuper = false;
         if (
@@ -331,9 +459,20 @@ contract MoonstreamV2 is ICar {
             updateBalance(cars.ourCar, monaco.getAccelerateCost(1));
             monaco.buyAcceleration(1);
         }
+
+        while (
+            isShieldEfficient(
+                monaco.getShieldCost(1),
+                getShieldEffectiveness(cars),
+                spendingScalerWad
+            ) && hasEnoughBalance(cars.ourCar, monaco.getShieldCost(1))
+        ) {
+            updateBalance(cars.ourCar, baseCosts.shieldCost);
+            monaco.buyShield(1);
+        }
     }
 
-    function sayMyName() external virtual pure returns (string memory) {
+    function sayMyName() external pure virtual returns (string memory) {
         return "Moonstream v0.2.0";
     }
 }
