@@ -364,7 +364,10 @@ contract MoonstreamV2 is ICar {
             if (bananas[i] <= cars.ourCar.y + cars.ourCar.speed) {
                 // Don't accelerate if we're hitting a banana.
                 accelToBanana = 0;
-            } else if (bananas[i] < cars.lagCar.y + cars.lagCar.speed) {
+            } else if (
+                cars.ourCarIndex < 2 &&
+                bananas[i] < cars.lagCar.y + cars.lagCar.speed
+            ) {
                 // Stop one step before the banana if the lag cars is going to hit it.
                 accelToBanana =
                     int(bananas[i] - (cars.ourCar.y + cars.ourCar.speed)) -
