@@ -76,7 +76,7 @@ contract MoonstreamV2 is ICar {
         uint256 shellEffectiveness,
         int256 scalerWad
     ) internal view virtual returns (bool) {
-        uint256 efficiencyCost = shellEffectiveness * 50;
+        uint256 efficiencyCost = shellEffectiveness * 32;
         return shellCost < scaleTargetCost(efficiencyCost, scalerWad);
     }
 
@@ -146,6 +146,24 @@ contract MoonstreamV2 is ICar {
         return superCost < scaleTargetCost(efficiencyCost, scalerWad);
     }
 
+    function getShieldEffectiveness(
+        Cars memory cars
+    ) internal view virtual returns (uint256 effectiveness) {
+        effectiveness = 1;
+        if (cars.ourCarIndex != 2) {
+            effectiveness += cars.ourCar.speed / 2;
+        }
+    }
+
+    function isShieldEfficient(
+        uint256 shieldCost,
+        uint256 shieldEffectiveness,
+        int256 scalarWad
+    ) internal view returns (bool) {
+        uint256 efficiencyCost = shieldEffectiveness * 10;
+        return shieldCost < scaleTargetCost(efficiencyCost, scalarWad);
+    }
+
     function getTurnsToLoseOptimistic(
         Monaco monaco,
         Monaco.CarData[] calldata allCars,
@@ -205,6 +223,9 @@ contract MoonstreamV2 is ICar {
         }
         if (maxY > 900) {
             scaleFactor = 6;
+        }
+        if (maxY > 950) {
+            scaleFactor = 8;
         }
         scalerWad = toWadUnsafe(scaleFactor);
     }
@@ -437,6 +458,17 @@ contract MoonstreamV2 is ICar {
         ) {
             updateBalance(cars.ourCar, monaco.getAccelerateCost(1));
             monaco.buyAcceleration(1);
+        }
+
+        while (
+            isShieldEfficient(
+                monaco.getShieldCost(1),
+                getShieldEffectiveness(cars),
+                spendingScalerWad
+            ) && hasEnoughBalance(cars.ourCar, monaco.getShieldCost(1))
+        ) {
+            updateBalance(cars.ourCar, baseCosts.shieldCost);
+            monaco.buyShield(1);
         }
     }
 
