@@ -20,6 +20,8 @@ import {MoonstreamV2} from "../src/cars/moonstream_cars/MoonstreamV2.sol";
 import {MoonstreamQuotaCar} from "../src/cars/moonstream_cars/MoonstreamQuotaCar.sol";
 import {PolygonCarV31} from "../src/cars/Season I finalists/PolygonCarV31.sol";
 import {TurnOptimizer2} from "../src/cars/Season I finalists/TurnOptimizer2.sol";
+import {BananaCar} from "../src/cars/moonstream_cars/BananaCar.sol";
+import {DummyCar} from "../src/cars/moonstream_cars/DummyCar.sol";
 
 uint256 constant CAR_LEN = 3;
 uint256 constant ABILITY_LEN = 5;
@@ -51,9 +53,9 @@ contract MonacoTest is Test {
     }
 
     function testGames() public {
-        ICar w1 = new MoonstreamV2();
-        ICar w2 = new TurnOptimizer2();
-        ICar w3 = new PolygonCarV31();
+        ICar w1 = new TurnOptimizer2();
+        ICar w2 = new PolygonCarV31();
+        ICar w3 = new MoonstreamV2();
 
         monaco.register(w1);
         monaco.register(w2);

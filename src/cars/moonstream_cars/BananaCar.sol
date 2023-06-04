@@ -12,11 +12,13 @@ contract BananaCar is ICar {
     ) external override {
         Monaco.CarData memory ourCar = allCars[ourCarIndex];
         // If we can afford to accelerate 3 times, let's do it.
-        if (ourCar.balance > monaco.getAccelerateCost(3))
-            ourCar.balance -= uint24(monaco.buyAcceleration(3));
+        if (ourCar.balance > monaco.getAccelerateCost(5) && ourCar.speed == 0)
+            ourCar.balance -= uint24(monaco.buyAcceleration(5));
 
-        if (ourCar.speed > 5) {
+        if (ourCar.speed > 0) {
             monaco.buyBanana();
+            monaco.buySuperShell(2);
+            monaco.buyShell(2);
         }
     }
 

@@ -350,6 +350,58 @@ contract MoonstreamV2 is ICar {
         }
     }
 
+    function optimalAccelerate(
+        Monaco monaco,
+        Cars memory cars,
+        uint256[] memory bananas,
+        int256 scalarWad
+    ) internal returns (int) {
+        int accelToBanana = -1;
+        for (uint i = 0; i < bananas.length; ++i) {
+            // skip bananas that are behind or on us
+            if (bananas[i] <= cars.ourCar.y) continue;
+
+            if (bananas[i] <= cars.ourCar.y + cars.ourCar.speed) {
+                // Don't accelerate if we're hitting a banana.
+                accelToBanana = 0;
+            } else if (bananas[i] < cars.lagCar.y + cars.lagCar.speed) {
+                // Stop one step before the banana if the lag cars is going to hit it.
+                accelToBanana =
+                    int(bananas[i] - (cars.ourCar.y + cars.ourCar.speed)) -
+                    1;
+            } else {
+                accelToBanana = int(
+                    bananas[i] - (cars.ourCar.y + cars.ourCar.speed)
+                );
+            }
+            break;
+        }
+
+        uint256 targetAccelPrice = getTargetAccelPrice(
+            monaco.getShellCost(1),
+            monaco.getSuperShellCost(1),
+            scalarWad
+        );
+
+        if (accelToBanana >= 0) {
+            while (
+                monaco.getAccelerateCost(1) < targetAccelPrice &&
+                hasEnoughBalance(cars.ourCar, monaco.getAccelerateCost(1)) &&
+                (accelToBanana > 0)
+            ) {
+                accelerate(monaco, cars.ourCar, 1);
+                accelToBanana--;
+            }
+        } else {
+            while (
+                monaco.getAccelerateCost(1) < targetAccelPrice &&
+                hasEnoughBalance(cars.ourCar, monaco.getAccelerateCost(1))
+            ) {
+                accelerate(monaco, cars.ourCar, 1);
+            }
+        }
+    }
+
     function takeYourTurn(
         Monaco monaco,
         Monaco.CarData[] calldata allCars,
@@ -420,8 +472,7 @@ contract MoonstreamV2 is ICar {
                 spendingScalerWad
             ) && hasEnoughBalance(cars.ourCar, baseCosts.superCost)
         ) {
-            updateBalance(cars.ourCar, baseCosts.superCost);
-            monaco.buySuperShell(1);
+            superShell(monaco, cars.ourCar, 1);
             usedSuper = true;
         }
 
@@ -432,8 +483,7 @@ contract MoonstreamV2 is ICar {
                 spendingScalerWad
             ) && hasEnoughBalance(cars.ourCar, baseCosts.bananaCost)
         ) {
-            updateBalance(cars.ourCar, baseCosts.bananaCost);
-            monaco.buyBanana();
+            banana(monaco, cars.ourCar);
         }
 
         if (
@@ -443,22 +493,10 @@ contract MoonstreamV2 is ICar {
                 spendingScalerWad
             ) && hasEnoughBalance(cars.ourCar, baseCosts.shellCost)
         ) {
-            updateBalance(cars.ourCar, baseCosts.shellCost);
-            monaco.buyShell(1);
+            shell(monaco, cars.ourCar, 1);
         }
 
-        uint256 targetAccelPrice = getTargetAccelPrice(
-            monaco.getShellCost(1),
-            monaco.getSuperShellCost(1),
-            spendingScalerWad
-        );
-        while (
-            monaco.getAccelerateCost(1) < targetAccelPrice &&
-            hasEnoughBalance(cars.ourCar, monaco.getAccelerateCost(1))
-        ) {
-            updateBalance(cars.ourCar, monaco.getAccelerateCost(1));
-            monaco.buyAcceleration(1);
-        }
+        optimalAccelerate(monaco, cars, bananas, spendingScalerWad);
 
         while (
             isShieldEfficient(
